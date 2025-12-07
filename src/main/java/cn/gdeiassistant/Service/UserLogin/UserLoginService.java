@@ -16,7 +16,7 @@ public class UserLoginService {
     private UserMapper userMapper;
 
     @Autowired
-    private cn.gdeiassistant.Service.UserLogin.UserCertificateService userCertificateService;
+    private UserCertificateService userCertificateService;
 
     @Autowired
     private UserDataService userDataService;

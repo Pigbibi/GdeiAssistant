@@ -90,6 +90,15 @@ dependencies {
     testImplementation group: 'junit', name: 'junit', version: '4.13.2'
 }
 
+sourceSets {
+    main {
+        resources {
+            srcDirs = ["src/main/resources"]
+            output.resourcesDir = file("$buildDir/classes/java/main")
+        }
+    }
+}
+
 tasks.withType(JavaCompile){
     options.encoding = "UTF-8"
 }

@@ -56,7 +56,8 @@ public class GdeiAssistantAppInitializer implements WebApplicationInitializer {
 
         //配置DispatcherServlet
         AnnotationConfigWebApplicationContext applicationContext = new AnnotationConfigWebApplicationContext();
-        applicationContext.register(ApplicationContextConfig.class);
+        // 同时注册 ApplicationContextConfig 和 ApplicationWebMvcConfig
+        applicationContext.register(ApplicationContextConfig.class, ApplicationWebMvcConfig.class);
         DispatcherServlet dispatcher = new DispatcherServlet(applicationContext);
         //发生404错误时抛出异常
         dispatcher.setThrowExceptionIfNoHandlerFound(true);

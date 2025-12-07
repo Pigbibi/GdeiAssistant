@@ -1,6 +1,6 @@
 package cn.gdeiassistant.ExceptionHandler;
 
-import cn.gdeiassistant.Controller.Ershou.Controller.ErshouController;
+import cn.gdeiassistant.Controller.Ershou.RestController.ErshouRestController;
 import cn.gdeiassistant.Exception.DatabaseException.ConfirmedStateException;
 import cn.gdeiassistant.Exception.DatabaseException.DataNotExistException;
 import cn.gdeiassistant.Exception.DatabaseException.NoAccessException;
@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
 
-@ControllerAdvice(basePackageClasses = ErshouController.class)
+@ControllerAdvice(basePackageClasses = ErshouRestController.class)
 @Order(value = 1)
 public class ErshouExceptionHandler {
 

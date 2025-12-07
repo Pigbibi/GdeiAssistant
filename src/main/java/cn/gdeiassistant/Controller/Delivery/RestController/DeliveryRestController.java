@@ -1,99 +1,110 @@
 package cn.gdeiassistant.Controller.Delivery.RestController;
 
-import cn.gdeiassistant.Annotation.RecordIPAddress;
-import cn.gdeiassistant.Enum.IPAddress.IPAddressEnum;
 import cn.gdeiassistant.Exception.DatabaseException.DataNotExistException;
-import cn.gdeiassistant.Exception.DeliveryException.DeliveryOrderStateUpdatedException;
-import cn.gdeiassistant.Exception.DeliveryException.NoAccessUpdatingException;
 import cn.gdeiassistant.Pojo.Entity.DeliveryOrder;
+import cn.gdeiassistant.Pojo.Entity.DeliveryTrade;
 import cn.gdeiassistant.Pojo.Result.DataJsonResult;
-import cn.gdeiassistant.Pojo.Result.JsonResult;
+import cn.gdeiassistant.Service.Profile.UserProfileService;
 import cn.gdeiassistant.Service.Socialising.Delivery.DeliveryService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
+@RequestMapping("/api/delivery") // 统一API前缀
 public class DeliveryRestController {
 
     @Autowired
     private DeliveryService deliveryService;
 
-    /**
-     * 分页查询快递代收订单
-     *
-     * @param start
-     * @param size
-     * @return
-     */
-    @RequestMapping(value = "/api/delivery/order/start/{start}/size/{size}", method = RequestMethod.GET)
-    public DataJsonResult<List<DeliveryOrder>> QueryDeliveryOrderPage(HttpServletRequest request, @PathVariable("start") Integer start
-            , @PathVariable("size") Integer size) {
-        List<DeliveryOrder> deliveryOrderList = deliveryService.QueryDeliveryOrderPage(start, size);
-        return new DataJsonResult<>(true, deliveryOrderList);
-    }
+    @Autowired
+    private UserProfileService userProfileService;
 
     /**
-     * 用户接单
+     * 获取全民快递主页所需数据 (头像和昵称)
      *
      * @param request
-     * @param orderId
      * @return
      * @throws Exception
      */
-    @RequestMapping(value = "/api/delivery/acceptorder", method = RequestMethod.POST)
-    public JsonResult AcceptOrder(HttpServletRequest request, Integer orderId) throws Exception {
-        deliveryService.AcceptOrder(orderId, request.getSession().getId());
-        return new JsonResult(true);
+    @GetMapping("/index/data")
+    public ResponseEntity<Map<String, String>> getDeliveryIndexData(HttpServletRequest request) throws Exception {
+        Map<String, String> data = new HashMap<>();
+        String avatarUrl = userProfileService.GetSelfUserAvatar(request.getSession().getId());
+        String nickname = userProfileService.GetSelfUserProfile(request.getSession().getId()).getNickname();
+        data.put("avatarURL", avatarUrl);
+        data.put("nickname", nickname);
+        return ResponseEntity.ok(data);
     }
 
     /**
-     * 删除订单
+     * 获取快递订单详细信息API
      *
      * @param request
-     * @param orderId
+     * @param id
      * @return
-     * @throws NoAccessUpdatingException
      * @throws DataNotExistException
-     * @throws DeliveryOrderStateUpdatedException
      */
-    @RequestMapping(value = "/api/delivery/order/id/{id}", method = RequestMethod.DELETE)
-    public JsonResult DeleteOrder(HttpServletRequest request, @PathVariable("id") Integer orderId) throws NoAccessUpdatingException, DataNotExistException, DeliveryOrderStateUpdatedException {
-        deliveryService.DeleteOrder(orderId, request.getSession().getId());
-        return new JsonResult(true);
+    @GetMapping("/order/id/{id}")
+    public ResponseEntity<Map<String, Object>> getDeliveryOrderDetailApi(HttpServletRequest request, @PathVariable("id") Integer id) throws DataNotExistException {
+        Map<String, Object> responseData = new HashMap<>();
+        DeliveryOrder deliveryOrder = deliveryService.QueryDeliveryOrderByOrderId(id);
+        responseData.put("deliveryOrder", deliveryOrder);
+
+        if (deliveryOrder.getState().equals(1)) {
+            DeliveryTrade deliveryTrade = deliveryService.QueryDeliveryTradeByOrderId(deliveryOrder.getOrderId());
+            responseData.put("deliveryTrade", deliveryTrade);
+        }
+
+        int detailType = deliveryService.QueryDeliveryOrderDetailType(request.getSession().getId(), id);
+        responseData.put("detailType", detailType);
+        return ResponseEntity.ok(responseData);
     }
 
     /**
-     * 更新订单状态，确认已交付快递
+     * 获取代收交易详细信息API
      *
      * @param request
      * @param tradeId
      * @return
      * @throws DataNotExistException
-     * @throws NoAccessUpdatingException
      */
-    @RequestMapping(value = "/api/delivery/trade/id/{id}/finishtrade", method = RequestMethod.POST)
-    public JsonResult FinishTrade(HttpServletRequest request, @PathVariable("id") Integer tradeId) throws DataNotExistException, NoAccessUpdatingException {
-        deliveryService.FinishTrade(tradeId, request.getSession().getId());
-        return new JsonResult(true);
+    @GetMapping("/trade/id/{id}")
+    public ResponseEntity<Map<String, Object>> getDeliveryTradeDetailApi(HttpServletRequest request, @PathVariable("id") Integer tradeId) throws DataNotExistException {
+        Map<String, Object> responseData = new HashMap<>();
+        DeliveryTrade deliveryTrade = deliveryService.QueryDeliveryTradeByTradeId(tradeId);
+        int detailType = deliveryService.QueryDeliveryTradeDetailType(request.getSession().getId(), tradeId);
+        responseData.put("deliveryTrade", deliveryTrade);
+        responseData.put("detailType", detailType);
+        return ResponseEntity.ok(responseData);
     }
 
     /**
-     * 添加快递代收订单
+     * 获取个人下单列表API
      *
      * @param request
-     * @param deliveryOrder
      * @return
      */
-    @RequestMapping(value = "/api/delivery/order", method = RequestMethod.POST)
-    @RecordIPAddress(type = IPAddressEnum.POST)
-    public JsonResult AddDeliveryOrder(HttpServletRequest request, DeliveryOrder deliveryOrder) {
-        deliveryService.AddDeliveryOrder(request.getSession().getId(), deliveryOrder);
-        return new JsonResult(true);
+    @GetMapping("/personal/orders")
+    public ResponseEntity<DataJsonResult<List<DeliveryOrder>>> getPersonalDeliveryOrders(HttpServletRequest request) {
+        List<DeliveryOrder> personalDeliveryOrderList = deliveryService.QueryPersonalDeliveryOrder(request.getSession().getId());
+        return ResponseEntity.ok(new DataJsonResult<>(true, personalDeliveryOrderList));
+    }
+
+    /**
+     * 获取个人接单列表API
+     *
+     * @param request
+     * @return
+     */
+    @GetMapping("/personal/acceptedorders")
+    public ResponseEntity<DataJsonResult<List<DeliveryOrder>>> getPersonalAcceptedDeliveryOrders(HttpServletRequest request) {
+        List<DeliveryOrder> acceptedDeliveryOrderList = deliveryService.QueryPersonalAcceptedDeliveryOrder(request.getSession().getId());
+        return ResponseEntity.ok(new DataJsonResult<>(true, acceptedDeliveryOrderList));
     }
 }

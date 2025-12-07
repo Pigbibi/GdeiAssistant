@@ -6,65 +6,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.web.servlet.config.annotation.*;
-import org.springframework.web.servlet.view.InternalResourceViewResolver;
-import org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer;
-import org.springframework.web.servlet.view.freemarker.FreeMarkerViewResolver;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 @Configuration
 @EnableWebMvc
 public class ApplicationWebMvcConfig extends WebMvcConfigurerAdapter {
-
-    /**
-     * FreeMarker模板配置
-     *
-     * @return
-     */
-    @Bean
-    public FreeMarkerConfigurer freeMarkerConfigurer() {
-        FreeMarkerConfigurer freeMarkerConfigurer = new FreeMarkerConfigurer();
-        freeMarkerConfigurer.setDefaultEncoding(StandardCharsets.UTF_8.displayName());
-        freeMarkerConfigurer.setTemplateLoaderPath("/WEB-INF/view/");
-        return freeMarkerConfigurer;
-    }
-
-    /**
-     * FreeMarker视图渲染器
-     *
-     * @return
-     */
-    @Bean
-    public FreeMarkerViewResolver freeMarkerViewResolver() {
-        FreeMarkerViewResolver freeMarkerViewResolver = new FreeMarkerViewResolver();
-        freeMarkerViewResolver.setContentType("text/html; charset=UTF-8");
-        freeMarkerViewResolver.setExposeRequestAttributes(true);
-        freeMarkerViewResolver.setExposeSessionAttributes(true);
-        freeMarkerViewResolver.setExposeSpringMacroHelpers(true);
-        freeMarkerViewResolver.setRedirectHttp10Compatible(false);
-        freeMarkerViewResolver.setCache(true);
-        freeMarkerViewResolver.setSuffix(".html");
-        freeMarkerViewResolver.setOrder(0);
-        return freeMarkerViewResolver;
-    }
-
-    /**
-     * JSP视图渲染器
-     *
-     * @return
-     */
-    @Bean
-    public InternalResourceViewResolver internalResourceViewResolver() {
-        InternalResourceViewResolver internalResourceViewResolver = new InternalResourceViewResolver();
-        internalResourceViewResolver.setPrefix("/WEB-INF/view/");
-        internalResourceViewResolver.setSuffix(".jsp");
-        internalResourceViewResolver.setRedirectHttp10Compatible(false);
-        internalResourceViewResolver.setOrder(1);
-        return internalResourceViewResolver;
-    }
 
     /**
      * 登录拦截器不进行拦截的URL列表
@@ -107,38 +55,55 @@ public class ApplicationWebMvcConfig extends WebMvcConfigurerAdapter {
     }
 
     /**
-     * 将对于静态资源的请求转发到DefaultServlet进行处理
-     *
-     * 由于此项与DispatcherServlet的ThrowExceptionIfNoHandlerFound冲突，改为使用静态资源处理器来访问静态资源
-     *
-     * @param configurer
-     */
-    /*@Override
-    public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
-        configurer.enable();
-    }*/
-
-    /**
      * 添加静态资源处理器
      *
      * @param registry
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/css/**").addResourceLocations("/css/");
-        registry.addResourceHandler("/js/**").addResourceLocations("/js/");
-        registry.addResourceHandler("/img/**").addResourceLocations("/img/");
+        // 映射Vue应用打包后的静态资源
+        // 假设Vue的构建输出（dist目录）位于 src/main/webapp/dist
+        // 将所有以 /dist/ 开头的请求映射到 /dist/ 目录
+        registry.addResourceHandler("/dist/**").addResourceLocations("/dist/");
+
+        // 映射公共静态资源
+        registry.addResourceHandler("/static/css**").addResourceLocations("/static/css");
+        registry.addResourceHandler("/static/js**").addResourceLocations("/static/js");
+        registry.addResourceHandler("/static/img**").addResourceLocations("/static/img");
         registry.addResourceHandler("/doc/**").addResourceLocations("/doc/");
         registry.addResourceHandler("/mp3/**").addResourceLocations("/mp3/");
         registry.addResourceHandler("/font/**").addResourceLocations("/font/");
-        registry.addResourceHandler("/txt/MP_verify_i9vujYHtkV4q7Kgx.txt").addResourceLocations("/MP_verify_i9vujYHtkV4q7Kgx.txt");
+        // 映射特定文件
+        registry.addResourceHandler("/MP_verify_i9vujYHtkV4q7Kgx.txt").addResourceLocations("/MP_verify_i9vujYHtkV4q7Kgx.txt");
+    }
+
+    /**
+     * 配置默认的Servlet处理器
+     * 允许Spring MVC将所有未处理的请求转发给Servlet容器的默认Servlet
+     * 这对于处理静态资源（如位于webapp根目录下的index.html）非常重要
+     * 并且可以避免DispatcherServlet拦截所有请求导致静态资源无法访问的问题
+     *
+     * @param configurer
+     */
+    @Override
+    public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
+        configurer.enable();
     }
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        for (Map.Entry<String, String> entry : SettingConstantUtils.VIEW_CONTROLLER_NAME_MAP.entrySet()) {
-            registry.addViewController(entry.getKey()).setViewName(entry.getValue());
-        }
-        super.addViewControllers(registry);
+        // 将根路径和所有未匹配的路径都转发到Vue应用的index.html
+        // 确保 /dist/index.html 能够被访问到，并且 Vue Router 可以接管路由
+        // 这里的 forward:/dist/index.html 会根据 WebApp 根目录下的 /dist/index.html 查找
+        registry.addViewController("/").setViewName("forward:/dist/index.html");
+        registry.addViewController("/index").setViewName("forward:/dist/index.html");
+        registry.addViewController("/{path:[^\\.]*}").setViewName("forward:/dist/index.html");
+        registry.addViewController("/**/{path:[^\\.]*}").setViewName("forward:/dist/index.html");
+
+        // 移除或注释掉旧的VIEW_CONTROLLER_NAME_MAP，因为现在Vue Router处理前端路由
+        // for (Map.Entry<String, String> entry : SettingConstantUtils.VIEW_CONTROLLER_NAME_MAP.entrySet()) {
+        //     registry.addViewController(entry.getKey()).setViewName(entry.getValue());
+        // }
+        // super.addViewControllers(registry); // 如果不再需要父类实现，可以移除
     }
 }

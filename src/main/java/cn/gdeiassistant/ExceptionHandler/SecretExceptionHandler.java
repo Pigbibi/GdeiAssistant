@@ -1,6 +1,6 @@
 package cn.gdeiassistant.ExceptionHandler;
 
-import cn.gdeiassistant.Controller.Secret.Controller.SecretController;
+import cn.gdeiassistant.Controller.Secret.RestController.SecretRestController;
 import cn.gdeiassistant.Exception.DatabaseException.DataNotExistException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
 
-@ControllerAdvice(basePackageClasses = SecretController.class)
+@ControllerAdvice(basePackageClasses = SecretRestController.class)
 @Order(value = 1)
 public class SecretExceptionHandler {
 

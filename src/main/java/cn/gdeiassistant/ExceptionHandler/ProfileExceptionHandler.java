@@ -1,6 +1,6 @@
 package cn.gdeiassistant.ExceptionHandler;
 
-import cn.gdeiassistant.Controller.UserProfile.Controller.ProfileController;
+import cn.gdeiassistant.Controller.UserProfile.RestController.ProfileRestController;
 import cn.gdeiassistant.Exception.DatabaseException.UserNotExistException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
 
-@ControllerAdvice(basePackageClasses = ProfileController.class)
+@ControllerAdvice(basePackageClasses = ProfileRestController.class)
 @Order(value = 1)
 public class ProfileExceptionHandler {
 
